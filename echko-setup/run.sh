@@ -1,2 +1,4 @@
 #!/usr/bin/with-contenv bashio
-python3 /app/app.py
+set -e
+bashio::log.info "Starting Echko Setup on port 7080..."
+exec python3 /app/app.py
