@@ -343,8 +343,7 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
     try:
         ha_token = create_ha_token()
         if not ha_token:
-            print('[SETUP] ERROR: Could not create HA token')
-            return
+            print('[SETUP] WARNING: Could not create HA token — continuing without it')
 
         configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
 
@@ -354,7 +353,7 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
 
         ha_url = f'https://{subdomain}.echko.app'
         if notify_echko(site_id, echko_secret, ha_token, ha_url):
-            print('[SETUP] Done!')
+            print('[SETUP] Done!' if ha_token else '[SETUP] Done (HA token à configurer manuellement)')
         else:
             print('[SETUP] ERROR: Could not notify Echko')
     except Exception as e:
@@ -418,6 +417,7 @@ SETUP_OK_HTML = f"""<!DOCTYPE html>
   <span class="icon">✅</span>
   <h1>Box configurée !</h1>
   <p>Le tunnel est actif. Echko commence à surveiller l'installation solaire.</p>
+  <p style="font-size:0.8rem;color:#888;margin-top:12px">Dernière étape : génère un token depuis <strong>Profil HA → Sécurité → Tokens d'accès longue durée</strong> et colle-le dans l'admin Echko.</p>
 </div></body></html>"""
 
 SETUP_ERROR_HTML = f"""<!DOCTYPE html>
