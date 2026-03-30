@@ -4,6 +4,7 @@ import json
 import socket
 import threading
 import requests
+import websocket
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -275,16 +276,26 @@ def configure_wifi(ssid, password):
 # ── HA / Cloudflared ───────────────────────────────────────────────────────────
 
 def create_ha_token():
-    r = requests.post(
-        f'{SUPERVISOR_URL}/core/api/auth/long_lived_access_token',
-        headers=SUPERVISOR_HEADERS,
-        json={'client_name': 'Echko', 'lifespan': 3650},
-        timeout=10
-    )
-    print(f'[SETUP] create_ha_token: {r.status_code}')
-    if r.status_code == 200:
-        return r.json().get('token')
-    return None
+    try:
+        ws = websocket.create_connection('ws://homeassistant:8123/api/websocket', timeout=10)
+        ws.recv()  # auth_required
+        ws.send(json.dumps({'type': 'auth', 'access_token': SUPERVISOR_TOKEN}))
+        auth = json.loads(ws.recv())
+        if auth.get('type') != 'auth_ok':
+            ws.close()
+            print('[SETUP] create_ha_token: auth failed')
+            return None
+        ws.send(json.dumps({'id': 1, 'type': 'auth/long_lived_access_token', 'client_name': 'Echko', 'lifespan': 3650}))
+        result = json.loads(ws.recv())
+        ws.close()
+        if result.get('success'):
+            print('[SETUP] create_ha_token: ok')
+            return result['result']
+        print(f'[SETUP] create_ha_token error: {result}')
+        return None
+    except Exception as e:
+        print(f'[SETUP] create_ha_token exception: {e}')
+        return None
 
 def configure_cloudflared(tunnel_token):
     # Configure addon options
