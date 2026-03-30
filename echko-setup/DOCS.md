@@ -38,11 +38,11 @@ Home Assistant ne permet pas la création automatique de tokens longue durée de
 | Sofar | ✅ |
 | Kostal | ✅ |
 | Victron (Cerbo GX) | ✅ |
-| SolarEdge | ⚠️ Manuel — intégration SolarEdge dans HA |
-| Enphase | ⚠️ Manuel — intégration Enphase dans HA |
-| ABB | ⚠️ Manuel — intégration ABB Aurora dans HA |
+| SolarEdge | 🔑 Clé API requise — l'addon ouvre automatiquement l'intégration dans HA |
+| Enphase | 🔑 Credentials requis — l'addon ouvre automatiquement l'intégration dans HA |
+| ABB | ❌ Pas d'intégration HA native — protocole Aurora propriétaire |
 
-Pour les marques manuelles, le reste du setup (tunnel, token) est automatique. Seule l'intégration onduleur est à configurer manuellement via HACS ou les intégrations HA.
+Pour SolarEdge et Enphase, l'addon déclenche automatiquement le wizard d'intégration dans HA. L'utilisateur doit simplement entrer ses identifiants (clé API SolarEdge ou IP/credentials Envoy). ABB Aurora n'est pas supporté nativement par HA.
 
 ## WiFi
 

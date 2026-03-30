@@ -336,6 +336,34 @@ def notify_echko(site_id, echko_secret, ha_token, ha_url):
     print(f'[SETUP] notify_echko: {r.status_code}')
     return r.status_code == 200
 
+HA_INTEGRATION_HANDLERS = {
+    'solaredge': 'solaredge',
+    'enphase':   'enphase_envoy',
+}
+
+def trigger_ha_integration(inverter_type):
+    handler = HA_INTEGRATION_HANDLERS.get(inverter_type)
+    if not handler:
+        return
+    try:
+        ws = websocket.create_connection(
+            'ws://supervisor/core/websocket',
+            timeout=10,
+            header=[f'Authorization: Bearer {SUPERVISOR_TOKEN}']
+        )
+        ws.recv()  # auth_required
+        ws.send(json.dumps({'type': 'auth', 'access_token': SUPERVISOR_TOKEN}))
+        auth = json.loads(ws.recv())
+        if auth.get('type') != 'auth_ok':
+            ws.close()
+            return
+        ws.send(json.dumps({'id': 1, 'type': 'config_entries/flow/init', 'handler': handler}))
+        result = json.loads(ws.recv())
+        ws.close()
+        print(f'[SETUP] trigger_ha_integration {handler}: {result.get("type")} step={result.get("step_id")}')
+    except Exception as e:
+        print(f'[SETUP] trigger_ha_integration exception: {e}')
+
 # ── Setup flow ─────────────────────────────────────────────────────────────────
 
 def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
@@ -346,6 +374,7 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
             print('[SETUP] WARNING: Could not create HA token — continuing without it')
 
         configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
+        trigger_ha_integration(inverter_type)
 
         if not configure_cloudflared(tunnel_token):
             print('[SETUP] ERROR: Could not configure Cloudflared')
@@ -417,7 +446,7 @@ SETUP_OK_HTML = f"""<!DOCTYPE html>
   <span class="icon">✅</span>
   <h1>Box configurée !</h1>
   <p>Le tunnel est actif. Echko commence à surveiller l'installation solaire.</p>
-  <p style="font-size:0.8rem;color:#888;margin-top:12px">Dernière étape : génère un token depuis <strong>Profil HA → Sécurité → Tokens d'accès longue durée</strong> et colle-le dans l'admin Echko.</p>
+  <p style="font-size:0.8rem;color:#888;margin-top:12px">Génère un token depuis <strong>Profil HA → Sécurité → Tokens d'accès longue durée</strong> et colle-le dans l'admin Echko.</p>
 </div></body></html>"""
 
 SETUP_ERROR_HTML = f"""<!DOCTYPE html>
