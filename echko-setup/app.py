@@ -13,7 +13,7 @@ SUPERVISOR_HEADERS = {
     'Content-Type': 'application/json'
 }
 SUPERVISOR_URL = 'http://supervisor'
-HA_URL = 'http://homeassistant'
+HA_URL = 'http://homeassistant:8123'
 ECHKO_API = 'https://api.echko.app'
 HA_CONFIG_PATH = '/config/configuration.yaml'
 
