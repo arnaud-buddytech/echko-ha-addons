@@ -40,9 +40,9 @@ Home Assistant ne permet pas la création automatique de tokens longue durée de
 | Victron (Cerbo GX) | ✅ |
 | SolarEdge | 🔑 Clé API requise — l'addon ouvre automatiquement l'intégration dans HA |
 | Enphase | 🔑 Credentials requis — l'addon ouvre automatiquement l'intégration dans HA |
-| ABB | ❌ Pas d'intégration HA native — protocole Aurora propriétaire |
+| ABB PowerOne | 🔌 RS485 requis — l'addon ouvre automatiquement l'intégration Aurora dans HA |
 
-Pour SolarEdge et Enphase, l'addon déclenche automatiquement le wizard d'intégration dans HA. L'utilisateur doit simplement entrer ses identifiants (clé API SolarEdge ou IP/credentials Envoy). ABB Aurora n'est pas supporté nativement par HA.
+Pour SolarEdge, Enphase et ABB, l'addon déclenche automatiquement le wizard d'intégration dans HA. L'utilisateur doit entrer ses identifiants (clé API SolarEdge, IP/credentials Envoy, ou port série/RS485-TCP pour ABB Aurora).
 
 ## WiFi
 

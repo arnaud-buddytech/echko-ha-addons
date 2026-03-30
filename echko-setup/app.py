@@ -339,6 +339,7 @@ def notify_echko(site_id, echko_secret, ha_token, ha_url):
 HA_INTEGRATION_HANDLERS = {
     'solaredge': 'solaredge',
     'enphase':   'enphase_envoy',
+    'abb':       'aurora_abb_powerone',
 }
 
 def trigger_ha_integration(inverter_type):
