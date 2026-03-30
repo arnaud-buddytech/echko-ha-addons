@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import json
 import socket
 import threading
@@ -7,6 +8,8 @@ import requests
 import websocket
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+
+_HOST_RE = re.compile(r'^[a-zA-Z0-9.\-]{1,253}$')
 
 SUPERVISOR_TOKEN = os.environ.get('SUPERVISOR_TOKEN', '')
 SUPERVISOR_HEADERS = {
@@ -190,6 +193,9 @@ def configure_inverter(inverter_type, host, slave_id):
     if inverter_type not in MODBUS_INVERTERS or not host:
         print(f'[SETUP] Inverter {inverter_type} — skip modbus config (no host or not modbus)')
         return True
+    if not _HOST_RE.match(host):
+        print(f'[SETUP] Invalid host value, refusing YAML generation: {host!r}')
+        return False
 
     effective_slave = int(slave_id) if slave_id else MODBUS_TEMPLATES[inverter_type].get('default_slave', 1)
     modbus_block = generate_modbus_block(inverter_type, host, effective_slave)

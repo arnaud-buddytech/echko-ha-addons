@@ -1,58 +1,57 @@
 # Echko Setup
 
-Cet addon configure automatiquement votre box Home Assistant pour le monitoring solaire Echko.
+This add-on automatically configures your Home Assistant box for Echko solar monitoring.
 
-## Fonctionnement
+## How it works
 
-1. Créez un site dans l'admin Echko et obtenez le QR code de configuration.
-2. Depuis un téléphone **connecté au même réseau** que la box, scannez le QR code.
-3. L'addon configure automatiquement :
-   - Le tunnel Cloudflare (accès distant sécurisé)
-   - L'intégration Modbus de l'onduleur dans `configuration.yaml`
-4. **Dernière étape manuelle** : créez un token d'accès dans HA et collez-le dans l'admin Echko.
+1. Create a site in the Echko admin and get the setup QR code.
+2. From a phone **connected to the same network as the box**, scan the QR code.
+3. The add-on automatically configures:
+   - The Cloudflare tunnel (secure remote access)
+   - The inverter Modbus integration in `configuration.yaml`
+   - The HA integration wizard for non-Modbus inverters (SolarEdge, Enphase, ABB)
+4. **One manual step**: create a long-lived access token in HA and paste it in the Echko admin.
 
-## Créer un token d'accès Home Assistant
+## Creating a Home Assistant access token
 
-Home Assistant ne permet pas la création automatique de tokens longue durée depuis un addon. Vous devez le faire manuellement une seule fois :
+Home Assistant does not allow add-ons to create long-lived tokens automatically. You only need to do this once:
 
-1. Dans Home Assistant, cliquez sur votre **avatar** (bas à gauche) → **Profil**
-2. Faites défiler jusqu'à la section **Sécurité**
-3. Cliquez **Créer un token** sous *Tokens d'accès longue durée*
-4. Donnez-lui un nom (ex: `Echko`) et copiez le token affiché
-5. Dans l'admin Echko, ouvrez le site → **Modifier** → collez le token dans le champ **Token HA**
+1. In Home Assistant, click your **avatar** (bottom left) → **Profile**
+2. Scroll down to the **Security** section
+3. Click **Create token** under *Long-lived access tokens*
+4. Name it (e.g. `Echko`) and copy the token displayed
+5. In the Echko admin, open the site → **Edit** → paste the token in the **HA Token** field
 
-> Le token ne s'affiche qu'une seule fois. Copiez-le immédiatement.
+> The token is only shown once. Copy it immediately.
 
-## Marques d'onduleurs supportées (Modbus TCP)
+## Supported inverter brands
 
-| Marque | Configuration automatique |
-|--------|--------------------------|
-| SMA | ✅ |
-| Growatt | ✅ |
-| Huawei / SUN2000 | ✅ |
-| Fronius | ✅ (port 1502) |
-| Sungrow | ✅ |
-| GoodWe | ✅ |
-| SolarX | ✅ |
-| Deye | ✅ |
-| Sofar | ✅ |
-| Kostal | ✅ |
-| Victron (Cerbo GX) | ✅ |
-| SolarEdge | 🔑 Clé API requise — l'addon ouvre automatiquement l'intégration dans HA |
-| Enphase | 🔑 Credentials requis — l'addon ouvre automatiquement l'intégration dans HA |
-| ABB PowerOne | 🔌 RS485 requis — l'addon ouvre automatiquement l'intégration Aurora dans HA |
+| Brand | Auto-configuration |
+|-------|-------------------|
+| SMA | ✅ Modbus TCP |
+| Growatt | ✅ Modbus TCP |
+| Huawei / SUN2000 | ✅ Modbus TCP |
+| Fronius | ✅ Modbus TCP (port 1502) |
+| Sungrow | ✅ Modbus TCP |
+| GoodWe | ✅ Modbus TCP |
+| SolarX | ✅ Modbus TCP |
+| Deye | ✅ Modbus TCP |
+| Sofar | ✅ Modbus TCP |
+| Kostal | ✅ Modbus TCP |
+| Victron (Cerbo GX) | ✅ Modbus TCP |
+| SolarEdge | 🔑 API key required — integration wizard opened automatically |
+| Enphase | 🔑 Credentials required — integration wizard opened automatically |
+| ABB PowerOne | 🔌 RS485 required — Aurora integration wizard opened automatically |
 
-Pour SolarEdge, Enphase et ABB, l'addon déclenche automatiquement le wizard d'intégration dans HA. L'utilisateur doit entrer ses identifiants (clé API SolarEdge, IP/credentials Envoy, ou port série/RS485-TCP pour ABB Aurora).
+## WiFi setup
 
-## WiFi
+If the box is not yet connected to a network when scanned:
 
-Si la box n'est pas encore connectée au réseau au moment du scan :
-
-1. La box crée un point d'accès WiFi temporaire
-2. Connectez votre téléphone à ce réseau
-3. Ouvrez `http://homeassistant.local:7080` — le portail WiFi s'affiche
-4. Entrez le SSID et le mot de passe du réseau client
-5. La box se connecte et le setup reprend automatiquement
+1. The box creates a temporary Wi-Fi access point
+2. Connect your phone to that network
+3. Open `http://homeassistant.local:7080` — the Wi-Fi portal appears
+4. Enter the client network SSID and password
+5. The box connects and the setup resumes automatically
 
 ## Support
 
