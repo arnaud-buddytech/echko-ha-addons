@@ -7,9 +7,21 @@ Cet addon configure automatiquement votre box Home Assistant pour le monitoring 
 1. Créez un site dans l'admin Echko et obtenez le QR code de configuration.
 2. Depuis un téléphone **connecté au même réseau** que la box, scannez le QR code.
 3. L'addon configure automatiquement :
-   - Un token d'accès Home Assistant pour Echko
    - Le tunnel Cloudflare (accès distant sécurisé)
    - L'intégration Modbus de l'onduleur dans `configuration.yaml`
+4. **Dernière étape manuelle** : créez un token d'accès dans HA et collez-le dans l'admin Echko.
+
+## Créer un token d'accès Home Assistant
+
+Home Assistant ne permet pas la création automatique de tokens longue durée depuis un addon. Vous devez le faire manuellement une seule fois :
+
+1. Dans Home Assistant, cliquez sur votre **avatar** (bas à gauche) → **Profil**
+2. Faites défiler jusqu'à la section **Sécurité**
+3. Cliquez **Créer un token** sous *Tokens d'accès longue durée*
+4. Donnez-lui un nom (ex: `Echko`) et copiez le token affiché
+5. Dans l'admin Echko, ouvrez le site → **Modifier** → collez le token dans le champ **Token HA**
+
+> Le token ne s'affiche qu'une seule fois. Copiez-le immédiatement.
 
 ## Marques d'onduleurs supportées (Modbus TCP)
 
@@ -26,13 +38,21 @@ Cet addon configure automatiquement votre box Home Assistant pour le monitoring 
 | Sofar | ✅ |
 | Kostal | ✅ |
 | Victron (Cerbo GX) | ✅ |
-| SolarEdge | ⚠️ Manuel (SunSpec) |
-| Enphase | ⚠️ Manuel (API HTTP) |
-| ABB | ⚠️ Manuel (Aurora) |
+| SolarEdge | ⚠️ Manuel — intégration SolarEdge dans HA |
+| Enphase | ⚠️ Manuel — intégration Enphase dans HA |
+| ABB | ⚠️ Manuel — intégration ABB Aurora dans HA |
+
+Pour les marques manuelles, le reste du setup (tunnel, token) est automatique. Seule l'intégration onduleur est à configurer manuellement via HACS ou les intégrations HA.
 
 ## WiFi
 
-Si la box n'est pas connectée au réseau, l'addon sert un portail WiFi sur le port 7080. Connectez-vous au réseau créé par la box et ouvrez `http://homeassistant.local:7080` pour configurer le WiFi.
+Si la box n'est pas encore connectée au réseau au moment du scan :
+
+1. La box crée un point d'accès WiFi temporaire
+2. Connectez votre téléphone à ce réseau
+3. Ouvrez `http://homeassistant.local:7080` — le portail WiFi s'affiche
+4. Entrez le SSID et le mot de passe du réseau client
+5. La box se connecte et le setup reprend automatiquement
 
 ## Support
 
