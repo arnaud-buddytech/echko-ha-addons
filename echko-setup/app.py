@@ -278,7 +278,11 @@ def configure_wifi(ssid, password):
 def create_ha_token():
     try:
         print(f'[SETUP] SUPERVISOR_TOKEN len={len(SUPERVISOR_TOKEN)}')
-        ws = websocket.create_connection('ws://homeassistant:8123/api/websocket', timeout=10)
+        ws = websocket.create_connection(
+            'ws://supervisor/core/websocket',
+            timeout=10,
+            header=[f'Authorization: Bearer {SUPERVISOR_TOKEN}']
+        )
         ws.recv()  # auth_required
         ws.send(json.dumps({'type': 'auth', 'access_token': SUPERVISOR_TOKEN}))
         auth = json.loads(ws.recv())
