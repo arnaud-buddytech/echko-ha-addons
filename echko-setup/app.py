@@ -276,7 +276,7 @@ def configure_wifi(ssid, password):
 
 def create_ha_token():
     r = requests.post(
-        f'{HA_URL}/api/auth/long_lived_access_token',
+        f'{SUPERVISOR_URL}/core/api/auth/long_lived_access_token',
         headers=SUPERVISOR_HEADERS,
         json={'client_name': 'Echko', 'lifespan': 3650},
         timeout=10
