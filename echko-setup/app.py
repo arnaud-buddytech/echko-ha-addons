@@ -415,6 +415,18 @@ SETUP_ERROR_HTML = f"""<!DOCTYPE html>
   <p>Ce QR code est invalide ou a expiré. Régénère-le depuis l'admin Echko.</p>
 </div></body></html>"""
 
+STATUS_HTML = f"""<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echko Setup</title>
+<style>{STYLE}</style></head>
+<body><div class="card center">
+  <span class="logo">echko.</span>
+  <span class="icon">✅</span>
+  <h1>Addon actif</h1>
+  <p>Le portail de configuration est prêt.<br>Scanne le QR code généré depuis l'admin Echko pour configurer cette box.</p>
+</div></body></html>"""
+
 # ── HTTP Handler ───────────────────────────────────────────────────────────────
 
 class SetupHandler(BaseHTTPRequestHandler):
@@ -437,11 +449,20 @@ class SetupHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def do_GET(self):
+    def get_path(self):
         parsed = urlparse(self.path)
-        params = parse_qs(parsed.query)
+        # Strip ingress prefix if behind HA ingress proxy
+        base = self.headers.get('X-Ingress-Path', '')
+        path = parsed.path
+        if base and path.startswith(base):
+            path = path[len(base):] or '/'
+        return path, parsed.query
 
-        if parsed.path == '/health':
+    def do_GET(self):
+        path, query = self.get_path()
+        params = parse_qs(query)
+
+        if path == '/health':
             self.send_json({'status': 'ok', 'network': has_network()})
             return
 
@@ -450,7 +471,7 @@ class SetupHandler(BaseHTTPRequestHandler):
             self.send_html(WIFI_HTML)
             return
 
-        if parsed.path == '/setup':
+        if path == '/setup':
             tunnel_token      = params.get('tunnelToken',    [None])[0]
             subdomain         = params.get('subdomain',      [None])[0]
             ha_local_url      = params.get('haLocalUrl',     ['http://homeassistant.local:8123'])[0]
@@ -473,12 +494,13 @@ class SetupHandler(BaseHTTPRequestHandler):
             self.send_html(SETUP_OK_HTML)
             return
 
-        self.send_json({'status': 'ready', 'network': True})
+        # Sidebar status page
+        self.send_html(STATUS_HTML)
 
     def do_POST(self):
-        parsed = urlparse(self.path)
+        path, _ = self.get_path()
 
-        if parsed.path == '/wifi':
+        if path == '/wifi':
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
             params = parse_qs(body)

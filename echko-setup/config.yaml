@@ -1,6 +1,6 @@
 name: "Echko Setup"
 description: "Configure automatiquement votre box Home Assistant avec Echko."
-version: "1.0.4"
+version: "1.0.5"
 slug: "echko_setup"
 init: false
 arch:
@@ -15,6 +15,7 @@ ports_description:
   7080/tcp: "Portail de configuration Echko"
 hassio_api: true
 homeassistant_api: true
-ingress: false
+ingress: true
+ingress_port: 7080
 panel_icon: mdi:solar-power
 panel_title: Echko Setup
