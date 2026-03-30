@@ -275,34 +275,6 @@ def configure_wifi(ssid, password):
 
 # ── HA / Cloudflared ───────────────────────────────────────────────────────────
 
-def create_ha_token():
-    try:
-        print(f'[SETUP] SUPERVISOR_TOKEN len={len(SUPERVISOR_TOKEN)}')
-        ws = websocket.create_connection(
-            'ws://supervisor/core/websocket',
-            timeout=10,
-            header=[f'Authorization: Bearer {SUPERVISOR_TOKEN}']
-        )
-        ws.recv()  # auth_required
-        ws.send(json.dumps({'type': 'auth', 'access_token': SUPERVISOR_TOKEN}))
-        auth = json.loads(ws.recv())
-        print(f'[SETUP] WS auth response: {auth}')
-        if auth.get('type') != 'auth_ok':
-            ws.close()
-            print('[SETUP] create_ha_token: auth failed')
-            return None
-        ws.send(json.dumps({'id': 1, 'type': 'auth/long_lived_access_token', 'client_name': 'Echko', 'lifespan': 3650}))
-        result = json.loads(ws.recv())
-        ws.close()
-        if result.get('success'):
-            print('[SETUP] create_ha_token: ok')
-            return result['result']
-        print(f'[SETUP] create_ha_token error: {result}')
-        return None
-    except Exception as e:
-        print(f'[SETUP] create_ha_token exception: {e}')
-        return None
-
 def configure_cloudflared(tunnel_token):
     # Configure addon options
     r = requests.post(
@@ -370,10 +342,6 @@ def trigger_ha_integration(inverter_type):
 def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
     print(f'[SETUP] Starting for site {site_id} — inverter: {inverter_type} @ {inverter_host}')
     try:
-        ha_token = create_ha_token()
-        if not ha_token:
-            print('[SETUP] WARNING: Could not create HA token — continuing without it')
-
         configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
         trigger_ha_integration(inverter_type)
 
@@ -382,8 +350,8 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
             return
 
         ha_url = f'https://{subdomain}.echko.app'
-        if notify_echko(site_id, echko_secret, ha_token, ha_url):
-            print('[SETUP] Done!' if ha_token else '[SETUP] Done (HA token à configurer manuellement)')
+        if notify_echko(site_id, echko_secret, None, ha_url):
+            print('[SETUP] Done — HA token to be configured manually')
         else:
             print('[SETUP] ERROR: Could not notify Echko')
     except Exception as e:
