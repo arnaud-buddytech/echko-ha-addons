@@ -18,7 +18,7 @@ SUPERVISOR_HEADERS = {
 }
 SUPERVISOR_URL = 'http://supervisor'
 HA_URL = 'http://homeassistant:8123'
-ECHKO_API = 'https://api.echko.app'
+ECHKO_API = 'https://staging.echko.io'
 HA_CONFIG_PATH = '/config/configuration.yaml'
 
 # ── Modbus templates ───────────────────────────────────────────────────────────
