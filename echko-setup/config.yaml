@@ -1,6 +1,6 @@
 name: "Echko Setup"
 description: "Configure automatiquement votre box Home Assistant avec Echko."
-version: "1.1.16"
+version: "1.1.17"
 slug: "echko_setup"
 init: false
 arch:

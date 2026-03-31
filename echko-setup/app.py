@@ -208,7 +208,7 @@ def configure_inverter(inverter_type, host, slave_id):
 
         # Remove existing modbus block if present
         import re
-        content = re.sub(r'\nmodbus:[\s\S]*?(?=\n\w|\Z)', '', content)
+        content = re.sub(r'(?:^|\n)modbus:[\s\S]*?(?=\n\w|\Z)', '', content)
 
         # Append recorder/history includes if not present
         recorder_block = """
@@ -365,11 +365,17 @@ def load_sync_state():
 def apply_sync(inverters):
     """Apply inverter config from Echko sync payload to configuration.yaml."""
     try:
+        print(f'[SYNC] apply_sync: {len(inverters)} inverter(s) received')
+        for inv in inverters:
+            print(f'[SYNC]   - {inv.get("name")} | type={inv.get("inverterType")} | host={inv.get("inverterHost")!r} | slave={inv.get("inverterSlaveId")}')
+
         with open(HA_CONFIG_PATH, 'r') as f:
             content = f.read()
 
         # Remove all existing modbus blocks
-        content = re.sub(r'\nmodbus:[\s\S]*?(?=\n\w|\Z)', '', content)
+        before_len = len(content)
+        content = re.sub(r'(?:^|\n)modbus:[\s\S]*?(?=\n\w|\Z)', '', content)
+        print(f'[SYNC] Removed modbus block: {before_len} → {len(content)} chars')
 
         recorder_entities = []
         modbus_blocks = []
@@ -384,6 +390,7 @@ def apply_sync(inverters):
             if not template or not host:
                 print(f'[SYNC] Skip {inv["name"]}: no template or no host')
                 continue
+            print(f'[SYNC] Building block for {inv["name"]} @ {host}')
 
             effective_slave = int(slave_id) if slave_id else template.get('default_slave', 1)
             port = template.get('port', 502)
