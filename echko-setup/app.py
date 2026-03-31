@@ -445,11 +445,13 @@ def sync_loop():
             continue
         token = state['tunnelToken']
         try:
+            print(f'[SYNC] Polling {ECHKO_API}/api/setup/sync...')
             r = requests.get(
                 f'{ECHKO_API}/api/setup/sync',
                 headers={'Authorization': f'Bearer {token}'},
                 timeout=10
             )
+            print(f'[SYNC] Response: {r.status_code}')
             if r.status_code != 200:
                 continue
             data = r.json()
