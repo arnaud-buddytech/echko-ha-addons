@@ -1,6 +1,6 @@
 # Echko Setup
 
-This add-on automatically configures your Home Assistant box for Echko solar monitoring.
+This add-on automatically configures your Home Assistant box for Echko solar monitoring and keeps the Modbus inverter configuration in sync with the Echko admin.
 
 ## How it works
 
@@ -11,6 +11,8 @@ This add-on automatically configures your Home Assistant box for Echko solar mon
    - The inverter Modbus integration in `configuration.yaml`
    - The HA integration wizard for non-Modbus inverters (SolarEdge, Enphase, ABB)
 4. **One manual step**: create a long-lived access token in HA and paste it in the Echko admin.
+
+From then on, any change made in the Echko admin (inverter IP, slave ID, etc.) is automatically pushed to `configuration.yaml` within 60 seconds — no rescanning needed.
 
 ## Creating a Home Assistant access token
 
@@ -23,6 +25,22 @@ Home Assistant does not allow add-ons to create long-lived tokens automatically.
 5. In the Echko admin, open the site → **Edit** → paste the token in the **HA Token** field
 
 > The token is only shown once. Copy it immediately.
+
+## Manual bootstrap (advanced)
+
+If the QR code flow cannot be used (e.g. no phone on the same network), you can bootstrap the sync manually:
+
+1. In the Echko admin, copy the **Tunnel Token** for the site.
+2. Using the **File editor** add-on, create the file `/config/echko_token.txt` containing only the token (no newline).
+3. Restart the Echko Setup add-on. It will read the token, activate the sync, and delete the file automatically.
+
+## Applying admin changes to HA
+
+In the Echko admin, the **"Appliquer vers HA"** button (in the site dropdown) immediately requests a sync. The add-on polls every 60 seconds and will apply any pending changes within that window.
+
+Changes applied automatically include:
+- Inverter IP address and Modbus slave ID
+- Adding or removing inverters from the Modbus configuration
 
 ## Supported inverter brands
 
