@@ -475,13 +475,7 @@ def sync_loop():
 def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
     print(f'[SETUP] Starting for site {site_id} — inverter: {inverter_type} @ {inverter_host}')
     try:
-        configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
-        trigger_ha_integration(inverter_type)
-
-        if not configure_cloudflared(tunnel_token):
-            print('[SETUP] ERROR: Could not configure Cloudflared')
-            return
-
+        # Save sync state early so the thread can start even if cloudflared fails
         save_sync_state(tunnel_token)
 
         # Start sync thread if not already running
@@ -491,6 +485,12 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
             t = threading.Thread(target=sync_loop, daemon=True)
             t.start()
             print('[SYNC] Sync thread started (post-setup).')
+
+        configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
+        trigger_ha_integration(inverter_type)
+
+        if not configure_cloudflared(tunnel_token):
+            print('[SETUP] ERROR: Could not configure Cloudflared')
 
         ha_url = f'https://{subdomain}.echko.app'
         if notify_echko(site_id, echko_secret, None, ha_url):
@@ -627,6 +627,21 @@ class SetupHandler(BaseHTTPRequestHandler):
         # No network → WiFi portal
         if not has_network():
             self.send_html(WIFI_HTML)
+            return
+
+        if path == '/sync-init':
+            tunnel_token = params.get('tunnelToken', [None])[0]
+            if not tunnel_token:
+                self.send_json({'error': 'tunnelToken requis'}, 400)
+                return
+            save_sync_state(tunnel_token)
+            global _sync_thread_started
+            if not _sync_thread_started:
+                _sync_thread_started = True
+                t = threading.Thread(target=sync_loop, daemon=True)
+                t.start()
+                print('[SYNC] Sync thread started (manual init).')
+            self.send_json({'ok': True})
             return
 
         if path == '/setup':
