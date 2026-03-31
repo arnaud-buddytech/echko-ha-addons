@@ -484,6 +484,14 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
 
         save_sync_state(tunnel_token)
 
+        # Start sync thread if not already running
+        global _sync_thread_started
+        if not _sync_thread_started:
+            _sync_thread_started = True
+            t = threading.Thread(target=sync_loop, daemon=True)
+            t.start()
+            print('[SYNC] Sync thread started (post-setup).')
+
         ha_url = f'https://{subdomain}.echko.app'
         if notify_echko(site_id, echko_secret, None, ha_url):
             print('[SETUP] Done — HA token to be configured manually')
@@ -669,12 +677,15 @@ class SetupHandler(BaseHTTPRequestHandler):
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
+_sync_thread_started = False
+
 if __name__ == '__main__':
     port = 7080
     print(f'[ECHKO] Echko Setup starting on port {port}')
 
     # Start sync polling thread if a tunnelToken is already saved from a previous setup
     if load_sync_state():
+        _sync_thread_started = True
         t = threading.Thread(target=sync_loop, daemon=True)
         t.start()
         print('[SYNC] Polling thread started.')
