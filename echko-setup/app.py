@@ -343,6 +343,133 @@ def trigger_ha_integration(inverter_type):
     except Exception as e:
         print(f'[SETUP] trigger_ha_integration exception: {e}')
 
+# ── Sync state persistence ────────────────────────────────────────────────────
+
+SYNC_STATE_PATH = '/data/echko_sync.json'
+
+def save_sync_state(tunnel_token):
+    try:
+        with open(SYNC_STATE_PATH, 'w') as f:
+            json.dump({'tunnelToken': tunnel_token, 'lastSyncId': None}, f)
+        print('[SYNC] State saved.')
+    except Exception as e:
+        print(f'[SYNC] Could not save state: {e}')
+
+def load_sync_state():
+    try:
+        with open(SYNC_STATE_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+def apply_sync(inverters):
+    """Apply inverter config from Echko sync payload to configuration.yaml."""
+    try:
+        with open(HA_CONFIG_PATH, 'r') as f:
+            content = f.read()
+
+        # Remove all existing modbus blocks
+        content = re.sub(r'\nmodbus:[\s\S]*?(?=\n\w|\Z)', '', content)
+
+        recorder_entities = []
+        modbus_blocks = []
+
+        for inv in inverters:
+            inv_type    = inv.get('inverterType', 'sma')
+            host        = inv.get('inverterHost')
+            slave_id    = inv.get('inverterSlaveId')
+            prefix      = (inv.get('haEntityPrefix') or '').lower() or None
+            template    = MODBUS_TEMPLATES.get(inv_type)
+
+            if not template or not host:
+                print(f'[SYNC] Skip {inv["name"]}: no template or no host')
+                continue
+
+            effective_slave = int(slave_id) if slave_id else template.get('default_slave', 1)
+            port = template.get('port', 502)
+
+            # Rename sensors with prefix if provided
+            sensors = template['sensors']
+            if prefix:
+                default_prefix = inv_type  # e.g. 'sma'
+                sensors = [
+                    dict(s, name=s['name'].replace(default_prefix.upper(), prefix.upper(), 1))
+                    for s in sensors
+                ]
+
+            sensors_yaml = '\n'.join(build_sensor_block(s, effective_slave) for s in sensors)
+            modbus_blocks.append(f"""
+  # {inv['name']} ({inv_type})
+  - name: {inv['name']}
+    type: tcp
+    host: {host}
+    port: {port}
+    sensors:
+{sensors_yaml}""")
+
+            for s in sensors:
+                eid = f"sensor.{s['name'].lower()}"
+                if any(k in eid for k in ['journaliere', 'totale', 'daily', 'total', 'generation']):
+                    recorder_entities.append(eid)
+
+        if modbus_blocks:
+            content += '\nmodbus:' + ''.join(modbus_blocks) + '\n'
+
+        if recorder_entities:
+            if 'recorder:' not in content:
+                entities_yaml = '\n'.join(f'      - {e}' for e in recorder_entities)
+                content += f'\nrecorder:\n  include:\n    entities:\n{entities_yaml}\n'
+            if 'history:' not in content:
+                entities_yaml = '\n'.join(f'      - {e}' for e in recorder_entities)
+                content += f'\nhistory:\n  include:\n    entities:\n{entities_yaml}\n'
+
+        with open(HA_CONFIG_PATH, 'w') as f:
+            f.write(content)
+
+        print(f'[SYNC] configuration.yaml updated ({len(modbus_blocks)} inverter(s))')
+        requests.post(f'{HA_URL}/api/config/core/restart', headers=SUPERVISOR_HEADERS, timeout=5)
+        return True
+    except Exception as e:
+        print(f'[SYNC] ERROR: {e}')
+        return False
+
+def sync_loop():
+    """Background thread: polls Echko every 60s for pending config sync."""
+    import time
+    last_sync_id = None
+
+    while True:
+        time.sleep(60)
+        state = load_sync_state()
+        if not state or not state.get('tunnelToken'):
+            continue
+        token = state['tunnelToken']
+        try:
+            r = requests.get(
+                f'{ECHKO_API}/api/setup/sync',
+                headers={'Authorization': f'Bearer {token}'},
+                timeout=10
+            )
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            if not data.get('pending'):
+                continue
+            sync_id = data.get('syncId')
+            if sync_id == last_sync_id:
+                continue
+            print(f'[SYNC] Pending sync detected: {sync_id}')
+            if apply_sync(data.get('inverters', [])):
+                last_sync_id = sync_id
+                requests.post(
+                    f'{ECHKO_API}/api/setup/sync/ack',
+                    headers={'Authorization': f'Bearer {token}'},
+                    timeout=10
+                )
+                print('[SYNC] Ack sent.')
+        except Exception as e:
+            print(f'[SYNC] Poll error: {e}')
+
 # ── Setup flow ─────────────────────────────────────────────────────────────────
 
 def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
@@ -354,6 +481,8 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
         if not configure_cloudflared(tunnel_token):
             print('[SETUP] ERROR: Could not configure Cloudflared')
             return
+
+        save_sync_state(tunnel_token)
 
         ha_url = f'https://{subdomain}.echko.app'
         if notify_echko(site_id, echko_secret, None, ha_url):
@@ -543,6 +672,13 @@ class SetupHandler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     port = 7080
     print(f'[ECHKO] Echko Setup starting on port {port}')
+
+    # Start sync polling thread if a tunnelToken is already saved from a previous setup
+    if load_sync_state():
+        t = threading.Thread(target=sync_loop, daemon=True)
+        t.start()
+        print('[SYNC] Polling thread started.')
+
     server = HTTPServer(('0.0.0.0', port), SetupHandler)
     print(f'[ECHKO] Listening — network: {has_network()}')
     server.serve_forever()
