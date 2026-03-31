@@ -698,18 +698,18 @@ if __name__ == '__main__':
     port = 7080
     print(f'[ECHKO] Echko Setup starting on port {port}')
 
-    # Bootstrap sync state from /config/echko_token.txt if present (allows setup via File editor)
-    TOKEN_BOOTSTRAP_PATH = '/config/echko_token.txt'
-    if not load_sync_state() and os.path.exists(TOKEN_BOOTSTRAP_PATH):
-        try:
-            with open(TOKEN_BOOTSTRAP_PATH) as f:
-                bootstrap_token = f.read().strip()
-            if bootstrap_token:
-                save_sync_state(bootstrap_token)
-                os.remove(TOKEN_BOOTSTRAP_PATH)
-                print('[SYNC] Sync state bootstrapped from echko_token.txt.')
-        except Exception as e:
-            print(f'[SYNC] Bootstrap error: {e}')
+    # Bootstrap sync state from echko_token.txt if present (allows setup via File editor)
+    for TOKEN_BOOTSTRAP_PATH in ['/config/echko_token.txt', '/homeassistant/echko_token.txt', '/data/echko_token.txt']:
+        if not load_sync_state() and os.path.exists(TOKEN_BOOTSTRAP_PATH):
+            try:
+                with open(TOKEN_BOOTSTRAP_PATH) as f:
+                    bootstrap_token = f.read().strip()
+                if bootstrap_token:
+                    save_sync_state(bootstrap_token)
+                    os.remove(TOKEN_BOOTSTRAP_PATH)
+                    print(f'[SYNC] Sync state bootstrapped from {TOKEN_BOOTSTRAP_PATH}.')
+            except Exception as e:
+                print(f'[SYNC] Bootstrap error: {e}')
 
     # Start sync polling thread if a tunnelToken is already saved from a previous setup
     if load_sync_state():
