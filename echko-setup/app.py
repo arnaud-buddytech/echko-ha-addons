@@ -699,7 +699,9 @@ if __name__ == '__main__':
     print(f'[ECHKO] Echko Setup starting on port {port}')
 
     # Bootstrap sync state from echko_token.txt if present (allows setup via File editor)
+    print('[SYNC] Checking bootstrap paths...')
     for TOKEN_BOOTSTRAP_PATH in ['/config/echko_token.txt', '/homeassistant/echko_token.txt', '/data/echko_token.txt']:
+        print(f'[SYNC] Checking {TOKEN_BOOTSTRAP_PATH}: exists={os.path.exists(TOKEN_BOOTSTRAP_PATH)}')
         if not load_sync_state() and os.path.exists(TOKEN_BOOTSTRAP_PATH):
             try:
                 with open(TOKEN_BOOTSTRAP_PATH) as f:
