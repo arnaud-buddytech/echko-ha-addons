@@ -355,6 +355,9 @@ def configure_ha_http():
             '  trusted_proxies:\n'
             '    - 127.0.0.1\n'
             '    - ::1\n'
+            '    - 192.168.0.0/16\n'
+            '    - 10.0.0.0/8\n'
+            '    - 172.16.0.0/12\n'
         )
         with open(HA_CONFIG_PATH, 'a') as f:
             f.write(http_block)
