@@ -330,7 +330,7 @@ def start_cloudflared(tunnel_token):
 
 def notify_echko(site_id, echko_secret, ha_token, ha_url):
     r = requests.post(
-        f'{ECHKO_API}/api/sites/{site_id}/setup-complete',
+        f'{ECHKO_API}/api/setup/complete/{site_id}',
         headers={
             'Authorization': f'Bearer {echko_secret}',
             'Content-Type': 'application/json'
