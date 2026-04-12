@@ -341,6 +341,35 @@ def notify_echko(site_id, echko_secret, ha_token, ha_url):
     print(f'[SETUP] notify_echko: {r.status_code}')
     return r.status_code == 200
 
+def configure_ha_http():
+    """Ajoute use_x_forwarded_for + trusted_proxies dans configuration.yaml si absent."""
+    try:
+        with open(HA_CONFIG_PATH, 'r') as f:
+            content = f.read()
+        if 'use_x_forwarded_for' in content:
+            print('[SETUP] HA http config already present')
+            return True
+        http_block = (
+            '\nhttp:\n'
+            '  use_x_forwarded_for: true\n'
+            '  trusted_proxies:\n'
+            '    - 127.0.0.1\n'
+            '    - ::1\n'
+        )
+        with open(HA_CONFIG_PATH, 'a') as f:
+            f.write(http_block)
+        print('[SETUP] HA http config written')
+        # Restart HA core via Supervisor
+        try:
+            requests.post(f'{SUPERVISOR_URL}/core/restart', headers=SUPERVISOR_HEADERS, timeout=30)
+            print('[SETUP] HA restart requested')
+        except Exception as e:
+            print(f'[SETUP] HA restart request failed: {e}')
+        return True
+    except Exception as e:
+        print(f'[SETUP] configure_ha_http error: {e}')
+        return False
+
 # ── Setup flow ─────────────────────────────────────────────────────────────────
 
 def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
@@ -351,6 +380,7 @@ def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inve
             print('[SETUP] ERROR: Could not configure Cloudflared')
             return
 
+        configure_ha_http()
         configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
 
         ha_token = create_ha_token(ha_local_url)
