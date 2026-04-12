@@ -275,16 +275,23 @@ def configure_wifi(ssid, password):
 
 # ── HA / Cloudflared ───────────────────────────────────────────────────────────
 
-def create_ha_token():
-    r = requests.post(
-        f'{HA_URL}/api/auth/long_lived_access_token',
-        headers=SUPERVISOR_HEADERS,
-        json={'client_name': 'Echko', 'lifespan': 3650},
-        timeout=10
-    )
-    print(f'[SETUP] create_ha_token: {r.status_code}')
-    if r.status_code == 200:
-        return r.json().get('token')
+def create_ha_token(ha_local_url=None):
+    candidates = [f'{HA_URL}/api/auth/long_lived_access_token']
+    if ha_local_url:
+        candidates.append(f'{ha_local_url}/api/auth/long_lived_access_token')
+    for url in candidates:
+        try:
+            r = requests.post(
+                url,
+                headers=SUPERVISOR_HEADERS,
+                json={'client_name': 'Echko', 'lifespan': 3650},
+                timeout=10
+            )
+            print(f'[SETUP] create_ha_token ({url}): {r.status_code}')
+            if r.status_code == 200:
+                return r.json().get('token')
+        except Exception as e:
+            print(f'[SETUP] create_ha_token ({url}): {e}')
     return None
 
 _cloudflared_proc = None
@@ -339,16 +346,16 @@ def notify_echko(site_id, echko_secret, ha_token, ha_url):
 def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
     print(f'[SETUP] Starting for site {site_id} — inverter: {inverter_type} @ {inverter_host}')
     try:
-        ha_token = create_ha_token()
-        if not ha_token:
-            print('[SETUP] ERROR: Could not create HA token')
+        # Start cloudflared first — critical path
+        if not configure_cloudflared(tunnel_token):
+            print('[SETUP] ERROR: Could not configure Cloudflared')
             return
 
         configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
 
-        if not configure_cloudflared(tunnel_token):
-            print('[SETUP] ERROR: Could not configure Cloudflared')
-            return
+        ha_token = create_ha_token(ha_local_url)
+        if not ha_token:
+            print('[SETUP] WARNING: Could not create HA token — tunnel is up but haToken not saved')
 
         ha_url = f'https://{subdomain}.echko.app'
         if notify_echko(site_id, echko_secret, ha_token, ha_url):
