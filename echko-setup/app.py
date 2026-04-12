@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 import os
-import re
 import json
 import socket
 import threading
+import subprocess
 import requests
-import websocket
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-
-_HOST_RE = re.compile(r'^[a-zA-Z0-9.\-]{1,253}$')
 
 SUPERVISOR_TOKEN = os.environ.get('SUPERVISOR_TOKEN', '')
 SUPERVISOR_HEADERS = {
@@ -17,7 +14,7 @@ SUPERVISOR_HEADERS = {
     'Content-Type': 'application/json'
 }
 SUPERVISOR_URL = 'http://supervisor'
-HA_URL = 'http://homeassistant:8123'
+HA_URL = 'http://homeassistant'
 ECHKO_API = 'https://api.echko.app'
 HA_CONFIG_PATH = '/config/configuration.yaml'
 
@@ -193,9 +190,6 @@ def configure_inverter(inverter_type, host, slave_id):
     if inverter_type not in MODBUS_INVERTERS or not host:
         print(f'[SETUP] Inverter {inverter_type} — skip modbus config (no host or not modbus)')
         return True
-    if not _HOST_RE.match(host):
-        print(f'[SETUP] Invalid host value, refusing YAML generation: {host!r}')
-        return False
 
     effective_slave = int(slave_id) if slave_id else MODBUS_TEMPLATES[inverter_type].get('default_slave', 1)
     modbus_block = generate_modbus_block(inverter_type, host, effective_slave)
@@ -208,7 +202,7 @@ def configure_inverter(inverter_type, host, slave_id):
 
         # Remove existing modbus block if present
         import re
-        content = re.sub(r'(?:^|\n)modbus:[\s\S]*?(?=\n\w|\Z)', '', content)
+        content = re.sub(r'\nmodbus:[\s\S]*?(?=\n\w|\Z)', '', content)
 
         # Append recorder/history includes if not present
         recorder_block = """
@@ -281,25 +275,51 @@ def configure_wifi(ssid, password):
 
 # ── HA / Cloudflared ───────────────────────────────────────────────────────────
 
-def configure_cloudflared(tunnel_token):
-    # Configure addon options
+def create_ha_token():
     r = requests.post(
-        f'{SUPERVISOR_URL}/addons/cloudflared/options',
+        f'{HA_URL}/api/auth/long_lived_access_token',
         headers=SUPERVISOR_HEADERS,
-        json={'tunnel_token': tunnel_token},
+        json={'client_name': 'Echko', 'lifespan': 3650},
         timeout=10
     )
-    print(f'[SETUP] cloudflared options: {r.status_code}')
-    if r.status_code != 200:
+    print(f'[SETUP] create_ha_token: {r.status_code}')
+    if r.status_code == 200:
+        return r.json().get('token')
+    return None
+
+_cloudflared_proc = None
+
+def configure_cloudflared(tunnel_token):
+    global _cloudflared_proc
+    # Save token to persistent storage
+    token_path = '/data/echko_tunnel_token.txt'
+    try:
+        with open(token_path, 'w') as f:
+            f.write(tunnel_token)
+    except Exception as e:
+        print(f'[SETUP] Could not save tunnel token: {e}')
         return False
-    # Start addon
-    r = requests.post(
-        f'{SUPERVISOR_URL}/addons/cloudflared/start',
-        headers=SUPERVISOR_HEADERS,
-        timeout=15
-    )
-    print(f'[SETUP] cloudflared start: {r.status_code}')
-    return r.status_code == 200
+    return start_cloudflared(tunnel_token)
+
+def start_cloudflared(tunnel_token):
+    global _cloudflared_proc
+    if _cloudflared_proc and _cloudflared_proc.poll() is None:
+        _cloudflared_proc.terminate()
+    try:
+        _cloudflared_proc = subprocess.Popen(
+            ['/usr/local/bin/cloudflared', 'tunnel', '--no-autoupdate', 'run', '--token', tunnel_token],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+        print(f'[SETUP] cloudflared started (pid {_cloudflared_proc.pid})')
+        # Log output in background
+        def _log():
+            for line in _cloudflared_proc.stdout:
+                print(f'[CF] {line.decode().rstrip()}')
+        threading.Thread(target=_log, daemon=True).start()
+        return True
+    except Exception as e:
+        print(f'[SETUP] cloudflared start error: {e}')
+        return False
 
 def notify_echko(site_id, echko_secret, ha_token, ha_url):
     r = requests.post(
@@ -314,196 +334,25 @@ def notify_echko(site_id, echko_secret, ha_token, ha_url):
     print(f'[SETUP] notify_echko: {r.status_code}')
     return r.status_code == 200
 
-HA_INTEGRATION_HANDLERS = {
-    'solaredge': 'solaredge',
-    'enphase':   'enphase_envoy',
-    'abb':       'aurora_abb_powerone',
-}
-
-def trigger_ha_integration(inverter_type):
-    handler = HA_INTEGRATION_HANDLERS.get(inverter_type)
-    if not handler:
-        return
-    try:
-        ws = websocket.create_connection(
-            'ws://supervisor/core/websocket',
-            timeout=10,
-            header=[f'Authorization: Bearer {SUPERVISOR_TOKEN}']
-        )
-        ws.recv()  # auth_required
-        ws.send(json.dumps({'type': 'auth', 'access_token': SUPERVISOR_TOKEN}))
-        auth = json.loads(ws.recv())
-        if auth.get('type') != 'auth_ok':
-            ws.close()
-            return
-        ws.send(json.dumps({'id': 1, 'type': 'config_entries/flow/init', 'handler': handler}))
-        result = json.loads(ws.recv())
-        ws.close()
-        print(f'[SETUP] trigger_ha_integration {handler}: {result.get("type")} step={result.get("step_id")}')
-    except Exception as e:
-        print(f'[SETUP] trigger_ha_integration exception: {e}')
-
-# ── Sync state persistence ────────────────────────────────────────────────────
-
-SYNC_STATE_PATH = '/data/echko_sync.json'
-
-def save_sync_state(tunnel_token):
-    try:
-        with open(SYNC_STATE_PATH, 'w') as f:
-            json.dump({'tunnelToken': tunnel_token, 'lastSyncId': None}, f)
-        print('[SYNC] State saved.')
-    except Exception as e:
-        print(f'[SYNC] Could not save state: {e}')
-
-def load_sync_state():
-    try:
-        with open(SYNC_STATE_PATH) as f:
-            return json.load(f)
-    except Exception:
-        return None
-
-def apply_sync(inverters):
-    """Apply inverter config from Echko sync payload to configuration.yaml."""
-    try:
-        print(f'[SYNC] apply_sync: {len(inverters)} inverter(s) received')
-        for inv in inverters:
-            print(f'[SYNC]   - {inv.get("name")} | type={inv.get("inverterType")} | host={inv.get("inverterHost")!r} | slave={inv.get("inverterSlaveId")}')
-
-        with open(HA_CONFIG_PATH, 'r') as f:
-            content = f.read()
-
-        # Remove all existing modbus blocks
-        before_len = len(content)
-        content = re.sub(r'(?:^|\n)modbus:[\s\S]*?(?=\n\w|\Z)', '', content)
-        print(f'[SYNC] Removed modbus block: {before_len} → {len(content)} chars')
-
-        recorder_entities = []
-        modbus_blocks = []
-
-        for inv in inverters:
-            inv_type    = inv.get('inverterType', 'sma')
-            host        = inv.get('inverterHost')
-            slave_id    = inv.get('inverterSlaveId')
-            prefix      = (inv.get('haEntityPrefix') or '').lower() or None
-            template    = MODBUS_TEMPLATES.get(inv_type)
-
-            if not template or not host:
-                print(f'[SYNC] Skip {inv["name"]}: no template or no host')
-                continue
-            print(f'[SYNC] Building block for {inv["name"]} @ {host}')
-
-            effective_slave = int(slave_id) if slave_id else template.get('default_slave', 1)
-            port = template.get('port', 502)
-
-            # Rename sensors with prefix if provided
-            sensors = template['sensors']
-            if prefix:
-                default_prefix = inv_type  # e.g. 'sma'
-                sensors = [
-                    dict(s, name=s['name'].replace(default_prefix.upper(), prefix.upper(), 1))
-                    for s in sensors
-                ]
-
-            sensors_yaml = '\n'.join(build_sensor_block(s, effective_slave) for s in sensors)
-            modbus_blocks.append(f"""
-  # {inv['name']} ({inv_type})
-  - name: {inv['name']}
-    type: tcp
-    host: {host}
-    port: {port}
-    sensors:
-{sensors_yaml}""")
-
-            for s in sensors:
-                eid = f"sensor.{s['name'].lower()}"
-                if any(k in eid for k in ['journaliere', 'totale', 'daily', 'total', 'generation']):
-                    recorder_entities.append(eid)
-
-        if modbus_blocks:
-            content += '\nmodbus:' + ''.join(modbus_blocks) + '\n'
-
-        if recorder_entities:
-            if 'recorder:' not in content:
-                entities_yaml = '\n'.join(f'      - {e}' for e in recorder_entities)
-                content += f'\nrecorder:\n  include:\n    entities:\n{entities_yaml}\n'
-            if 'history:' not in content:
-                entities_yaml = '\n'.join(f'      - {e}' for e in recorder_entities)
-                content += f'\nhistory:\n  include:\n    entities:\n{entities_yaml}\n'
-
-        with open(HA_CONFIG_PATH, 'w') as f:
-            f.write(content)
-
-        print(f'[SYNC] configuration.yaml updated ({len(modbus_blocks)} inverter(s))')
-        requests.post(f'{HA_URL}/api/config/core/restart', headers=SUPERVISOR_HEADERS, timeout=5)
-        return True
-    except Exception as e:
-        print(f'[SYNC] ERROR: {e}')
-        return False
-
-def sync_loop():
-    """Background thread: polls Echko every 60s for pending config sync."""
-    import time
-    last_sync_id = None
-
-    while True:
-        time.sleep(60)
-        state = load_sync_state()
-        if not state or not state.get('tunnelToken'):
-            continue
-        token = state['tunnelToken']
-        try:
-            print(f'[SYNC] Polling {ECHKO_API}/api/setup/sync...')
-            r = requests.get(
-                f'{ECHKO_API}/api/setup/sync',
-                headers={'Authorization': f'Bearer {token}'},
-                timeout=10
-            )
-            print(f'[SYNC] Response: {r.status_code}')
-            if r.status_code != 200:
-                continue
-            data = r.json()
-            if not data.get('pending'):
-                continue
-            sync_id = data.get('syncId')
-            if sync_id == last_sync_id:
-                continue
-            print(f'[SYNC] Pending sync detected: {sync_id}')
-            if apply_sync(data.get('inverters', [])):
-                last_sync_id = sync_id
-                requests.post(
-                    f'{ECHKO_API}/api/setup/sync/ack',
-                    headers={'Authorization': f'Bearer {token}'},
-                    timeout=10
-                )
-                print('[SYNC] Ack sent.')
-        except Exception as e:
-            print(f'[SYNC] Poll error: {e}')
-
 # ── Setup flow ─────────────────────────────────────────────────────────────────
 
 def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
     print(f'[SETUP] Starting for site {site_id} — inverter: {inverter_type} @ {inverter_host}')
     try:
-        # Save sync state early so the thread can start even if cloudflared fails
-        save_sync_state(tunnel_token)
-
-        # Start sync thread if not already running
-        global _sync_thread_started
-        if not _sync_thread_started:
-            _sync_thread_started = True
-            t = threading.Thread(target=sync_loop, daemon=True)
-            t.start()
-            print('[SYNC] Sync thread started (post-setup).')
+        ha_token = create_ha_token()
+        if not ha_token:
+            print('[SETUP] ERROR: Could not create HA token')
+            return
 
         configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
-        trigger_ha_integration(inverter_type)
 
         if not configure_cloudflared(tunnel_token):
             print('[SETUP] ERROR: Could not configure Cloudflared')
+            return
 
         ha_url = f'https://{subdomain}.echko.app'
-        if notify_echko(site_id, echko_secret, None, ha_url):
-            print('[SETUP] Done — HA token to be configured manually')
+        if notify_echko(site_id, echko_secret, ha_token, ha_url):
+            print('[SETUP] Done!')
         else:
             print('[SETUP] ERROR: Could not notify Echko')
     except Exception as e:
@@ -567,7 +416,6 @@ SETUP_OK_HTML = f"""<!DOCTYPE html>
   <span class="icon">✅</span>
   <h1>Box configurée !</h1>
   <p>Le tunnel est actif. Echko commence à surveiller l'installation solaire.</p>
-  <p style="font-size:0.8rem;color:#888;margin-top:12px">Génère un token depuis <strong>Profil HA → Sécurité → Tokens d'accès longue durée</strong> et colle-le dans l'admin Echko.</p>
 </div></body></html>"""
 
 SETUP_ERROR_HTML = f"""<!DOCTYPE html>
@@ -580,18 +428,6 @@ SETUP_ERROR_HTML = f"""<!DOCTYPE html>
   <span class="icon">⚠️</span>
   <h1>Paramètres manquants</h1>
   <p>Ce QR code est invalide ou a expiré. Régénère-le depuis l'admin Echko.</p>
-</div></body></html>"""
-
-STATUS_HTML = f"""<!DOCTYPE html>
-<html lang="fr"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Echko Setup</title>
-<style>{STYLE}</style></head>
-<body><div class="card center">
-  <span class="logo">echko.</span>
-  <span class="icon">✅</span>
-  <h1>Addon actif</h1>
-  <p>Le portail de configuration est prêt.<br>Scanne le QR code généré depuis l'admin Echko pour configurer cette box.</p>
 </div></body></html>"""
 
 # ── HTTP Handler ───────────────────────────────────────────────────────────────
@@ -616,20 +452,11 @@ class SetupHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def get_path(self):
-        parsed = urlparse(self.path)
-        # Strip ingress prefix if behind HA ingress proxy
-        base = self.headers.get('X-Ingress-Path', '')
-        path = parsed.path
-        if base and path.startswith(base):
-            path = path[len(base):] or '/'
-        return path, parsed.query
-
     def do_GET(self):
-        path, query = self.get_path()
-        params = parse_qs(query)
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
 
-        if path == '/health':
+        if parsed.path == '/health':
             self.send_json({'status': 'ok', 'network': has_network()})
             return
 
@@ -638,22 +465,7 @@ class SetupHandler(BaseHTTPRequestHandler):
             self.send_html(WIFI_HTML)
             return
 
-        if path == '/sync-init':
-            tunnel_token = params.get('tunnelToken', [None])[0]
-            if not tunnel_token:
-                self.send_json({'error': 'tunnelToken requis'}, 400)
-                return
-            save_sync_state(tunnel_token)
-            global _sync_thread_started
-            if not _sync_thread_started:
-                _sync_thread_started = True
-                t = threading.Thread(target=sync_loop, daemon=True)
-                t.start()
-                print('[SYNC] Sync thread started (manual init).')
-            self.send_json({'ok': True})
-            return
-
-        if path == '/setup':
+        if parsed.path == '/setup':
             tunnel_token      = params.get('tunnelToken',    [None])[0]
             subdomain         = params.get('subdomain',      [None])[0]
             ha_local_url      = params.get('haLocalUrl',     ['http://homeassistant.local:8123'])[0]
@@ -676,13 +488,12 @@ class SetupHandler(BaseHTTPRequestHandler):
             self.send_html(SETUP_OK_HTML)
             return
 
-        # Sidebar status page
-        self.send_html(STATUS_HTML)
+        self.send_json({'status': 'ready', 'network': True})
 
     def do_POST(self):
-        path, _ = self.get_path()
+        parsed = urlparse(self.path)
 
-        if path == '/wifi':
+        if parsed.path == '/wifi':
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
             params = parse_qs(body)
@@ -701,33 +512,21 @@ class SetupHandler(BaseHTTPRequestHandler):
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
-_sync_thread_started = False
-
 if __name__ == '__main__':
     port = 7080
     print(f'[ECHKO] Echko Setup starting on port {port}')
 
-    # Bootstrap sync state from echko_token.txt if present (allows setup via File editor)
-    print('[SYNC] Checking bootstrap paths...')
-    for TOKEN_BOOTSTRAP_PATH in ['/config/echko_token.txt', '/homeassistant/echko_token.txt', '/data/echko_token.txt']:
-        print(f'[SYNC] Checking {TOKEN_BOOTSTRAP_PATH}: exists={os.path.exists(TOKEN_BOOTSTRAP_PATH)}')
-        if not load_sync_state() and os.path.exists(TOKEN_BOOTSTRAP_PATH):
-            try:
-                with open(TOKEN_BOOTSTRAP_PATH) as f:
-                    bootstrap_token = f.read().strip()
-                if bootstrap_token:
-                    save_sync_state(bootstrap_token)
-                    os.remove(TOKEN_BOOTSTRAP_PATH)
-                    print(f'[SYNC] Sync state bootstrapped from {TOKEN_BOOTSTRAP_PATH}.')
-            except Exception as e:
-                print(f'[SYNC] Bootstrap error: {e}')
-
-    # Start sync polling thread if a tunnelToken is already saved from a previous setup
-    if load_sync_state():
-        _sync_thread_started = True
-        t = threading.Thread(target=sync_loop, daemon=True)
-        t.start()
-        print('[SYNC] Polling thread started.')
+    # Resume cloudflared if token was saved from a previous setup
+    token_path = '/data/echko_tunnel_token.txt'
+    if os.path.exists(token_path):
+        try:
+            with open(token_path) as f:
+                saved_token = f.read().strip()
+            if saved_token:
+                print('[ECHKO] Resuming cloudflared from saved token...')
+                start_cloudflared(saved_token)
+        except Exception as e:
+            print(f'[ECHKO] Could not resume cloudflared: {e}')
 
     server = HTTPServer(('0.0.0.0', port), SetupHandler)
     print(f'[ECHKO] Listening — network: {has_network()}')
