@@ -27,134 +27,133 @@ HA_CONFIG_PATH = '/config/configuration.yaml'
 
 MODBUS_TEMPLATES = {
     'fronius': {
-        # Fronius GEN24 / Symo — SunSpec float32, port 1502
-        # Daily energy not in a direct register → productionJournaliere sera null
-        # Echko dérive le quotidien depuis les snapshots total_increasing
         'default_slave': 1,
         'port': 1502,
         'sensors': [
-            {'name': 'Fronius_Inverter_AC_Power',        'address': 40089, 'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'Fronius_Inverter_Energy_Total',    'address': 40099, 'data_type': 'float32', 'input_type': None, 'scale': 0.001, 'precision': 3,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Fronius_Inverter_Grid_Voltage',    'address': 40083, 'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Fronius_Inverter_Temperature',     'address': 40107, 'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'ac_power',       'address': 40089, 'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'energy_total',   'address': 40099, 'data_type': 'float32', 'input_type': None, 'scale': 0.001, 'precision': 3,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage',   'address': 40083, 'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'temperature',    'address': 40107, 'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'sma': {
         'default_slave': 3,
         'sensors': [
-            {'name': 'SMA_Puissance_AC',            'address': 30775, 'data_type': 'int32',   'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'SMA_Production_Journaliere',   'address': 30517, 'data_type': 'uint64',  'input_type': None, 'scale': 0.001, 'precision': 3,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'SMA_Production_Totale',        'address': 30513, 'data_type': 'uint64',  'input_type': None, 'scale': 0.001, 'precision': 3,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'SMA_Tension_Reseau',           'address': 30783, 'data_type': 'uint32',  'input_type': None, 'scale': 0.01,  'precision': 2,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'SMA_Temperature',              'address': 30953, 'data_type': 'int32',   'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'puissance_ac',           'address': 30775, 'data_type': 'int32',  'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'production_journaliere', 'address': 30517, 'data_type': 'uint64', 'input_type': None, 'scale': 0.001, 'precision': 3,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'production_totale',      'address': 30513, 'data_type': 'uint64', 'input_type': None, 'scale': 0.001, 'precision': 3,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'tension_reseau',         'address': 30783, 'data_type': 'uint32', 'input_type': None, 'scale': 0.01,  'precision': 2,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'temperature',            'address': 30953, 'data_type': 'int32',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'growatt': {
         'default_slave': 1,
         'sensors': [
-            # Growatt MOD/MAX series — input registers
-            {'name': 'Growatt_Output_Power',         'address': 35,   'data_type': 'uint16',  'input_type': 'input', 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': "Growatt_Today_s_Generation",   'address': 53,   'data_type': 'uint16',  'input_type': 'input', 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Growatt_Total_Energy',         'address': 55,   'data_type': 'uint32',  'input_type': 'input', 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Growatt_Grid_Voltage',         'address': 38,   'data_type': 'uint16',  'input_type': 'input', 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Growatt_Inverter_Temperature', 'address': 93,   'data_type': 'int16',   'input_type': 'input', 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'output_power',          'address': 35, 'data_type': 'uint16', 'input_type': 'input', 'scale': None, 'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'today_s_generation',    'address': 53, 'data_type': 'uint16', 'input_type': 'input', 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_energy',          'address': 55, 'data_type': 'uint32', 'input_type': 'input', 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage',          'address': 38, 'data_type': 'uint16', 'input_type': 'input', 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'inverter_temperature',  'address': 93, 'data_type': 'int16',  'input_type': 'input', 'scale': 0.1,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'huawei': {
         'default_slave': 1,
         'sensors': [
-            # Huawei SUN2000 series — holding registers
-            {'name': 'SUN2000_Active_Power',         'address': 32080, 'data_type': 'int32',  'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'SUN2000_Daily_Yield_Energy',   'address': 32114, 'data_type': 'uint32', 'input_type': None, 'scale': 0.01,  'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'SUN2000_Total_Yield_Energy',   'address': 32106, 'data_type': 'uint32', 'input_type': None, 'scale': 0.01,  'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'SUN2000_Phase_A_Voltage',      'address': 32069, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'SUN2000_Internal_Temperature', 'address': 32087, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'active_power',         'address': 32080, 'data_type': 'int32',  'input_type': None, 'scale': None, 'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'daily_yield_energy',   'address': 32114, 'data_type': 'uint32', 'input_type': None, 'scale': 0.01, 'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_yield_energy',   'address': 32106, 'data_type': 'uint32', 'input_type': None, 'scale': 0.01, 'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'phase_a_voltage',      'address': 32069, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'internal_temperature', 'address': 32087, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'sungrow': {
         'default_slave': 1,
         'sensors': [
-            # Sungrow SG/RS series — holding registers
-            {'name': 'Sungrow_Output_Power',         'address': 5031, 'data_type': 'uint16',  'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'Sungrow_Daily_PV_Generation',  'address': 5003, 'data_type': 'uint16',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Sungrow_Total_PV_Generation',  'address': 5004, 'data_type': 'uint32',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Sungrow_Phase_A_Voltage',      'address': 5018, 'data_type': 'uint16',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Sungrow_Internal_Temperature', 'address': 5008, 'data_type': 'int16',   'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'output_power',         'address': 5031, 'data_type': 'uint16', 'input_type': None, 'scale': None, 'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'daily_pv_generation',  'address': 5003, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_pv_generation',  'address': 5004, 'data_type': 'uint32', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'phase_a_voltage',      'address': 5018, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'internal_temperature', 'address': 5008, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'goodwe': {
         'default_slave': 247,
         'sensors': [
-            # GoodWe ET/EH series — holding registers
-            {'name': 'Goodwe_AC_Output_Power',           'address': 35121, 'data_type': 'int32',  'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'Goodwe_Energy_Generation_Today',   'address': 35191, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Goodwe_Total_Energy_Generation',   'address': 35195, 'data_type': 'uint32', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Goodwe_Grid_Voltage_L1',           'address': 35123, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Goodwe_Inverter_Temperature',      'address': 35174, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'ac_output_power',          'address': 35121, 'data_type': 'int32',  'input_type': None, 'scale': None, 'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'energy_generation_today',  'address': 35191, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_energy_generation',  'address': 35195, 'data_type': 'uint32', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage_l1',          'address': 35123, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'inverter_temperature',     'address': 35174, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'solax': {
         'default_slave': 1,
         'sensors': [
-            # Solax X3 series — holding registers
-            {'name': 'Solax_Inverter_AC_Power',          'address': 181, 'data_type': 'int16',  'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {"name": "Solax_Today_s_Solar_Energy",       'address': 108, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Solax_Total_Solar_Energy',         'address': 82,  'data_type': 'uint32', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Solax_Grid_Voltage',               'address': 160, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Solax_Inverter_Temperature',       'address': 60,  'data_type': 'int16',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'inverter_ac_power',      'address': 181, 'data_type': 'int16',  'input_type': None, 'scale': None, 'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'today_s_solar_energy',   'address': 108, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_solar_energy',     'address': 82,  'data_type': 'uint32', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage',           'address': 160, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'inverter_temperature',   'address': 60,  'data_type': 'int16',  'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'deye': {
         'default_slave': 1,
         'sensors': [
-            # Deye/Solarman SUN-* series — holding registers
-            {'name': 'Deye_AC_Power',                    'address': 630, 'data_type': 'int16',  'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'Deye_Daily_Production',            'address': 108, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Deye_Total_Production',            'address': 534, 'data_type': 'uint32', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Deye_Grid_Voltage',                'address': 598, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Deye_Temperature',                 'address': 540, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'ac_power',          'address': 630, 'data_type': 'int16',  'input_type': None, 'scale': None, 'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'daily_production',  'address': 108, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_production',  'address': 534, 'data_type': 'uint32', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage',      'address': 598, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'temperature',       'address': 540, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'sofar': {
         'default_slave': 1,
         'sensors': [
-            # Sofar Solar KTLX-G3 series — holding registers
-            {'name': 'Sofar_Active_Power',               'address': 16,   'data_type': 'int16',  'input_type': None, 'scale': 10,    'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'Sofar_Today_Generation',           'address': 533,  'data_type': 'uint16', 'input_type': None, 'scale': 0.01,  'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Sofar_Total_Generation',           'address': 538,  'data_type': 'uint32', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Sofar_Grid_Voltage',               'address': 3082, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Sofar_Internal_Temperature',       'address': 1048, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'active_power',         'address': 16,   'data_type': 'int16',  'input_type': None, 'scale': 10,   'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'today_generation',     'address': 533,  'data_type': 'uint16', 'input_type': None, 'scale': 0.01, 'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_generation',     'address': 538,  'data_type': 'uint32', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage',         'address': 3082, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'internal_temperature', 'address': 1048, 'data_type': 'int16',  'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'kostal': {
         'default_slave': 71,
         'sensors': [
-            # Kostal PLENTICORE series — holding registers (float32 = 2 regs each)
-            {'name': 'Kostal_Piko_Actual_AC_Generation', 'address': 100,  'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'Kostal_Piko_Daily_Yield',          'address': 320,  'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Kostal_Piko_Total_Yield',          'address': 322,  'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Kostal_Piko_Grid_Voltage',         'address': 2,    'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
-            {'name': 'Kostal_Piko_Temperature',          'address': 214,  'data_type': 'float32', 'input_type': None, 'scale': None,  'precision': 1,    'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'actual_ac_generation', 'address': 100, 'data_type': 'float32', 'input_type': None, 'scale': None, 'precision': 1, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'daily_yield',          'address': 320, 'data_type': 'float32', 'input_type': None, 'scale': None, 'precision': 2, 'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'total_yield',          'address': 322, 'data_type': 'float32', 'input_type': None, 'scale': None, 'precision': 1, 'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage',         'address': 2,   'data_type': 'float32', 'input_type': None, 'scale': None, 'precision': 1, 'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
+            {'suffix': 'temperature',          'address': 214, 'data_type': 'float32', 'input_type': None, 'scale': None, 'precision': 1, 'unit': '°C',  'device_class': 'temperature', 'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
     'victron': {
-        # Victron Cerbo GX — Modbus TCP port 502
-        # Unit ID 239 = premier onduleur PV grid-tied (com.victronenergy.pvinverter.pv0)
-        # Unit ID configurable dans Cerbo GX → Settings → Modbus TCP
         'default_slave': 239,
         'sensors': [
-            {'name': 'Victron_PV_Power',             'address': 1026, 'data_type': 'int16',  'input_type': None, 'scale': None,  'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',     'scan_interval': 30},
-            {'name': 'Victron_PV_Yield_Today',        'address': 1029, 'data_type': 'uint16', 'input_type': None, 'scale': 0.01,  'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Victron_PV_Yield_Total',        'address': 2600, 'data_type': 'uint32', 'input_type': None, 'scale': 0.01,  'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
-            {'name': 'Victron_Grid_Voltage',          'address': 1030, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,   'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',     'scan_interval': 60},
+            {'suffix': 'pv_power',            'address': 1026, 'data_type': 'int16',  'input_type': None, 'scale': None, 'precision': None, 'unit': 'W',   'device_class': 'power',       'state_class': 'measurement',      'scan_interval': 30},
+            {'suffix': 'pv_yield_today_daily', 'address': 1029, 'data_type': 'uint16', 'input_type': None, 'scale': 0.01, 'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'pv_yield_total',      'address': 2600, 'data_type': 'uint32', 'input_type': None, 'scale': 0.01, 'precision': 2,    'unit': 'kWh', 'device_class': 'energy',      'state_class': 'total_increasing', 'scan_interval': 60},
+            {'suffix': 'grid_voltage',        'address': 1030, 'data_type': 'uint16', 'input_type': None, 'scale': 0.1,  'precision': 1,    'unit': 'V',   'device_class': 'voltage',     'state_class': 'measurement',      'scan_interval': 60},
         ]
     },
 }
 
 MODBUS_INVERTERS = set(MODBUS_TEMPLATES.keys())
+INVERTERS_STATE_PATH = '/data/echko_inverters.json'
 
-def build_sensor_block(sensor, slave_id):
-    lines = [f"        - name: {sensor['name']}"]
+def load_inverters_state():
+    try:
+        with open(INVERTERS_STATE_PATH, 'r') as f:
+            return json.loads(f.read())
+    except Exception:
+        return []
+
+def save_inverters_state(inverters):
+    with open(INVERTERS_STATE_PATH, 'w') as f:
+        f.write(json.dumps(inverters, indent=2))
+
+def build_sensor_block(sensor, slave_id, prefix):
+    name = f"{prefix}_{sensor['suffix']}"
+    lines = [f"        - name: {name}"]
     lines.append(f"          unit_of_measurement: \"{sensor['unit']}\"")
     lines.append(f"          device_address: {slave_id}")
     lines.append(f"          address: {sensor['address']}")
@@ -170,77 +169,120 @@ def build_sensor_block(sensor, slave_id):
     lines.append(f"          state_class: {sensor['state_class']}")
     return '\n'.join(lines)
 
-def generate_modbus_block(inverter_type, host, slave_id):
+def generate_modbus_hub(inverter_type, host, slave_id, prefix):
     template = MODBUS_TEMPLATES.get(inverter_type)
     if not template:
         return None
     port = template.get('port', 502)
-    sensors_yaml = '\n'.join(build_sensor_block(s, slave_id) for s in template['sensors'])
-    return f"""
-modbus:
-  - name: {inverter_type.upper()}
-    type: tcp
-    host: {host}
-    port: {port}
-    sensors:
-{sensors_yaml}
-"""
+    sensors_yaml = '\n'.join(build_sensor_block(s, slave_id, prefix) for s in template['sensors'])
+    return (
+        f"  - name: echko_{prefix}\n"
+        f"    type: tcp\n"
+        f"    host: {host}\n"
+        f"    port: {port}\n"
+        f"    sensors:\n"
+        f"{sensors_yaml}"
+    )
 
-def configure_inverter(inverter_type, host, slave_id):
-    if inverter_type not in MODBUS_INVERTERS or not host:
-        print(f'[SETUP] Inverter {inverter_type} — skip modbus config (no host or not modbus)')
-        return True
-
-    effective_slave = int(slave_id) if slave_id else MODBUS_TEMPLATES[inverter_type].get('default_slave', 1)
-    modbus_block = generate_modbus_block(inverter_type, host, effective_slave)
-    if not modbus_block:
+def rebuild_modbus_config():
+    import re
+    inverters = load_inverters_state()
+    if not inverters:
+        print('[SETUP] No inverters in state — nothing to write')
         return True
 
     try:
         with open(HA_CONFIG_PATH, 'r') as f:
             content = f.read()
 
-        # Remove existing modbus block if present
-        import re
         content = re.sub(r'\nmodbus:[\s\S]*?(?=\n\w|\Z)', '', content)
 
-        # Append recorder/history includes if not present
-        recorder_block = """
-recorder:
-  include:
-    entities:
-"""
-        history_block = """
-history:
-  include:
-    entities:
-"""
-        template = MODBUS_TEMPLATES[inverter_type]
-        for s in template['sensors']:
-            entity_id = f"sensor.{s['name'].lower()}"
-            if 'journaliere' in entity_id or 'totale' in entity_id or 'daily' in entity_id or 'total' in entity_id:
-                recorder_block += f"      - {entity_id}\n"
-                history_block  += f"      - {entity_id}\n"
+        hubs = []
+        recorder_entities = []
+        for inv in inverters:
+            inv_type = inv.get('type')
+            if inv_type not in MODBUS_INVERTERS or not inv.get('host'):
+                continue
+            template = MODBUS_TEMPLATES[inv_type]
+            slave = int(inv.get('slave') or template.get('default_slave', 1))
+            prefix = inv['prefix']
+            hub = generate_modbus_hub(inv_type, inv['host'], slave, prefix)
+            if hub:
+                hubs.append(hub)
+            for s in template['sensors']:
+                entity_id = f"sensor.{prefix}_{s['suffix']}"
+                if any(kw in s['suffix'] for kw in ('journaliere', 'totale', 'daily', 'total', 'generation', 'yield', 'energy')):
+                    recorder_entities.append(entity_id)
 
-        # Only add recorder/history if not already present
-        if 'recorder:' not in content:
-            content += recorder_block
-        if 'history:' not in content:
-            content += history_block
+        if hubs:
+            modbus_block = "\nmodbus:\n" + "\n".join(hubs) + "\n"
+            content += modbus_block
 
-        content += modbus_block
+        if recorder_entities:
+            if 'recorder:' not in content:
+                lines = ''.join(f"      - {e}\n" for e in recorder_entities)
+                content += f"\nrecorder:\n  include:\n    entities:\n{lines}"
+            if 'history:' not in content:
+                lines = ''.join(f"      - {e}\n" for e in recorder_entities)
+                content += f"\nhistory:\n  include:\n    entities:\n{lines}"
 
         with open(HA_CONFIG_PATH, 'w') as f:
             f.write(content)
 
-        print(f'[SETUP] configuration.yaml updated for {inverter_type}')
-
-        # Reload HA core config
+        print(f'[SETUP] configuration.yaml updated — {len(hubs)} modbus hub(s)')
         requests.post(f'{HA_URL}/api/config/core/restart', headers=SUPERVISOR_HEADERS, timeout=5)
         return True
     except Exception as e:
         print(f'[SETUP] ERROR writing configuration.yaml: {e}')
         return False
+
+def add_inverter(inverter_type, host, slave_id, prefix):
+    if inverter_type not in MODBUS_INVERTERS or not host or not prefix:
+        print(f'[SETUP] add_inverter skip — type={inverter_type} host={host} prefix={prefix}')
+        return False
+    inverters = load_inverters_state()
+    inverters = [inv for inv in inverters if inv.get('prefix') != prefix]
+    template = MODBUS_TEMPLATES[inverter_type]
+    inverters.append({
+        'type': inverter_type,
+        'host': host,
+        'slave': int(slave_id) if slave_id else template.get('default_slave', 1),
+        'prefix': prefix,
+    })
+    save_inverters_state(inverters)
+    return rebuild_modbus_config()
+
+def configure_inverter(inverter_type, host, slave_id, prefix=None):
+    if inverter_type not in MODBUS_INVERTERS or not host:
+        print(f'[SETUP] Inverter {inverter_type} — skip modbus config (no host or not modbus)')
+        return True
+    effective_prefix = (prefix or MODBUS_TEMPLATES[inverter_type].get('defaultPrefix', inverter_type)).lower()
+    return add_inverter(inverter_type, host, slave_id, effective_prefix)
+
+def add_power_entity_to_recorder(entity_ids):
+    if not entity_ids:
+        return
+    try:
+        import re
+        with open(HA_CONFIG_PATH, 'r') as f:
+            content = f.read()
+
+        lines_to_add = ''.join(f"      - {eid}\n" for eid in entity_ids)
+
+        if 'recorder:' in content:
+            content = re.sub(
+                r'(recorder:.*?include:.*?entities:\n)(.*?)(\n\S|\Z)',
+                lambda m: m.group(1) + m.group(2) + lines_to_add + m.group(3),
+                content, flags=re.DOTALL
+            )
+        else:
+            content += f"\nrecorder:\n  include:\n    entities:\n{lines_to_add}"
+
+        with open(HA_CONFIG_PATH, 'w') as f:
+            f.write(content)
+        print(f'[SETUP] Recorder updated for power entities: {entity_ids}')
+    except Exception as e:
+        print(f'[SETUP] add_power_entity_to_recorder error: {e}')
 
 # ── Network ────────────────────────────────────────────────────────────────────
 
@@ -375,16 +417,15 @@ def configure_ha_http():
 
 # ── Setup flow ─────────────────────────────────────────────────────────────────
 
-def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id):
-    print(f'[SETUP] Starting for site {site_id} — inverter: {inverter_type} @ {inverter_host}')
+def run_setup(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id, inverter_prefix=None):
+    print(f'[SETUP] Starting for site {site_id} — inverter: {inverter_type} @ {inverter_host} prefix={inverter_prefix}')
     try:
-        # Start cloudflared first — critical path
         if not configure_cloudflared(tunnel_token):
             print('[SETUP] ERROR: Could not configure Cloudflared')
             return
 
         configure_ha_http()
-        configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3')
+        configure_inverter(inverter_type, inverter_host, inverter_slave_id or '3', inverter_prefix)
 
         ha_token = create_ha_token(ha_local_url)
         if not ha_token:
@@ -514,6 +555,7 @@ class SetupHandler(BaseHTTPRequestHandler):
             inverter_type     = params.get('inverterType',   ['sma'])[0]
             inverter_host     = params.get('inverterHost',   [''])[0]
             inverter_slave_id = params.get('inverterSlaveId',['3'])[0]
+            inverter_prefix   = params.get('inverterPrefix', [None])[0]
 
             if not all([tunnel_token, subdomain, site_id, echko_secret]):
                 self.send_html(SETUP_ERROR_HTML, 400)
@@ -521,11 +563,15 @@ class SetupHandler(BaseHTTPRequestHandler):
 
             threading.Thread(
                 target=run_setup,
-                args=(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id),
+                args=(tunnel_token, subdomain, ha_local_url, site_id, echko_secret, inverter_type, inverter_host, inverter_slave_id, inverter_prefix),
                 daemon=True
             ).start()
 
             self.send_html(SETUP_OK_HTML)
+            return
+
+        if parsed.path == '/inverters':
+            self.send_json(load_inverters_state())
             return
 
         self.send_json({'status': 'ready', 'network': True})
@@ -546,6 +592,60 @@ class SetupHandler(BaseHTTPRequestHandler):
 
             configure_wifi(ssid, password)
             self.send_html(WIFI_WAIT_HTML)
+            return
+
+        # POST /add-inverter — ajoute un onduleur Modbus à la config HA
+        if parsed.path == '/add-inverter':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                inv_type = data.get('type', 'sma')
+                host = data.get('host', '')
+                slave = data.get('slave', '')
+                prefix = data.get('prefix', '')
+                if not host or not prefix:
+                    self.send_json({'error': 'host and prefix are required'}, 400)
+                    return
+                ok = add_inverter(inv_type, host, slave, prefix.lower())
+                self.send_json({'ok': ok, 'prefix': prefix.lower(), 'type': inv_type})
+            except Exception as e:
+                self.send_json({'error': str(e)}, 500)
+            return
+
+        # POST /remove-inverter — retire un onduleur par prefix
+        if parsed.path == '/remove-inverter':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                prefix = data.get('prefix', '')
+                if not prefix:
+                    self.send_json({'error': 'prefix is required'}, 400)
+                    return
+                inverters = load_inverters_state()
+                inverters = [inv for inv in inverters if inv.get('prefix') != prefix]
+                save_inverters_state(inverters)
+                rebuild_modbus_config()
+                self.send_json({'ok': True})
+            except Exception as e:
+                self.send_json({'error': str(e)}, 500)
+            return
+
+        # POST /recorder — ajoute des entities au recorder HA
+        if parsed.path == '/recorder':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                entities = data.get('entities', [])
+                if isinstance(entities, list) and entities:
+                    add_power_entity_to_recorder(entities)
+                    self.send_json({'ok': True})
+                else:
+                    self.send_json({'error': 'entities must be a non-empty list'}, 400)
+            except Exception as e:
+                self.send_json({'error': str(e)}, 500)
             return
 
         self.send_json({'error': 'Not found'}, 404)
