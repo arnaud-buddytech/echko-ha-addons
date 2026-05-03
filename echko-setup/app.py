@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import json
+import time
 import socket
 import threading
 import subprocess
@@ -674,6 +675,58 @@ class SetupHandler(BaseHTTPRequestHandler):
 
         self.send_json({'error': 'Not found'}, 404)
 
+# ── Sync polling ──────────────────────────────────────────────────────────────
+
+def sync_poll_loop():
+    token_path = '/data/echko_tunnel_token.txt'
+    while True:
+        time.sleep(30)
+        try:
+            if not os.path.exists(token_path):
+                continue
+            with open(token_path) as f:
+                token = f.read().strip()
+            if not token:
+                continue
+
+            r = requests.get(f'{ECHKO_API}/api/setup/sync',
+                headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            if not data.get('pending'):
+                continue
+
+            inverters = data.get('inverters', [])
+            print(f'[SYNC] Pending sync — {len(inverters)} inverter(s)')
+
+            inverters_state = []
+            for inv in inverters:
+                inv_type = inv.get('inverterType', 'sma')
+                host = inv.get('inverterHost', '')
+                prefix = (inv.get('haEntityPrefix') or inv_type).lower()
+                slave = inv.get('inverterSlaveId') or ''
+                if inv_type in MODBUS_INVERTERS and host:
+                    inverters_state.append({
+                        'type': inv_type,
+                        'host': host,
+                        'slave': int(slave) if slave else MODBUS_TEMPLATES[inv_type].get('default_slave', 1),
+                        'prefix': prefix,
+                    })
+
+            save_inverters_state(inverters_state)
+            if inverters_state:
+                rebuild_modbus_config()
+                print(f'[SYNC] Applied {len(inverters_state)} modbus hub(s)')
+            else:
+                print('[SYNC] No modbus inverters to configure')
+
+            requests.post(f'{ECHKO_API}/api/setup/sync/ack',
+                headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            print('[SYNC] Acknowledged')
+        except Exception as e:
+            print(f'[SYNC] Error: {e}')
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
@@ -691,6 +744,9 @@ if __name__ == '__main__':
                 start_cloudflared(saved_token)
         except Exception as e:
             print(f'[ECHKO] Could not resume cloudflared: {e}')
+
+    threading.Thread(target=sync_poll_loop, daemon=True).start()
+    print('[ECHKO] Sync polling started (every 30s)')
 
     server = HTTPServer(('0.0.0.0', port), SetupHandler)
     print(f'[ECHKO] Listening — network: {has_network()}')
