@@ -383,6 +383,23 @@ def notify_echko(site_id, echko_secret, ha_token, ha_url):
     print(f'[SETUP] notify_echko: {r.status_code}')
     return r.status_code == 200
 
+def get_local_ipv6_prefixes():
+    """Détecte les préfixes IPv6 publics locaux pour les ajouter aux trusted_proxies."""
+    import subprocess
+    prefixes = set()
+    try:
+        out = subprocess.check_output(['ip', '-6', 'addr', 'show', 'scope', 'global'], text=True)
+        for line in out.splitlines():
+            line = line.strip()
+            if line.startswith('inet6'):
+                addr = line.split()[1].split('/')[0]
+                parts = addr.split(':')
+                prefix = ':'.join(parts[:4]) + '::/64'
+                prefixes.add(prefix)
+    except Exception as e:
+        print(f'[SETUP] IPv6 detection error: {e}')
+    return prefixes
+
 def configure_ha_http():
     """Ajoute use_x_forwarded_for + trusted_proxies dans configuration.yaml si absent."""
     try:
@@ -391,6 +408,12 @@ def configure_ha_http():
         if 'use_x_forwarded_for' in content:
             print('[SETUP] HA http config already present')
             return True
+
+        ipv6_lines = ''
+        for prefix in get_local_ipv6_prefixes():
+            ipv6_lines += f'    - {prefix}\n'
+            print(f'[SETUP] Adding IPv6 trusted proxy: {prefix}')
+
         http_block = (
             '\nhttp:\n'
             '  use_x_forwarded_for: true\n'
@@ -400,6 +423,7 @@ def configure_ha_http():
             '    - 192.168.0.0/16\n'
             '    - 10.0.0.0/8\n'
             '    - 172.16.0.0/12\n'
+            + ipv6_lines
         )
         with open(HA_CONFIG_PATH, 'a') as f:
             f.write(http_block)
